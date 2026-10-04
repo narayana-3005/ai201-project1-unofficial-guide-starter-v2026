@@ -21,11 +21,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+It answers questions about student life at one (fictional) university from `campus_life`, a set of 88 short posts students wrote for each other. The posts cover the residence halls (laundry prices, noise, what each building is like), the dining halls (wait times, hours, what's worth eating), nine courses (exams, workload, advice), and admin rules nobody explains properly (housing lottery, add/drop, pass/fail, parking, printing). Ask it something like "how late can I declare pass/fail?" or "when is Kestrel Commons busy?" and it finds the closest posts, answers only from them, and names the file it used. If nothing in the posts is close enough, it says "I don't have enough information about that" instead of guessing.
 
 ## Chunking Strategy
 
@@ -86,50 +82,71 @@ Printed with `python app.py chunks --indices 6,54,59,69,70`, picked so that spli
 
 ## Sample Answer
 
-<!-- One complete question and answer, pasted as text, with the source line
-     visible. Milestone 4. -->
+**Question:** How are juniors and seniors ordered in the housing lottery?
 
-**Question:**
+**Answer** (full output of `python app.py ask "How are juniors and seniors ordered in the housing lottery?"`):
 
-**Answer:**
+    (best distance 0.225, cutoff 0.55)
 
-```
-```
+    Juniors and seniors are ordered by accumulated credit hours first, with any ties broken randomly. (source: admin_housing_lottery.txt)
 
-**My relevance cutoff:**
+    Sources retrieved: admin_housing_lottery.txt, admin_parking_permits.txt, advising_registration.txt, housing_innisfree_hall.txt, housing_tamsin_court.txt
 
-<!-- The number you set in config.py, and how you got there.
+    1 model calls this session, 676 tokens (646 in, 30 out)
 
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
+An off-topic question, for comparison (`python app.py ask "Who won the 1994 World Cup?"`). The gate refuses it before the model is called:
 
-     Milestone 4. -->
+    (best distance 0.886, cutoff 0.55)
 
-| Question | In corpus? | Best distance |
-|---|---|---|
-|  |  |  |
+    I don't have enough information about that.
+
+    0 model calls this session
+
+**My relevance cutoff:** `THRESHOLD = 0.55` in `config.py` (the starter shipped 0.6).
+
+Best distances from `python app.py retrieve "..."` against my chunker's index (92 chunks), top-k 5:
+
+| Question | In corpus? | Best distance | Best chunk |
+|---|---|---|---|
+| How are juniors and seniors ordered in the housing lottery? | yes | 0.2250 | `admin_housing_lottery.txt#0` |
+| How long is the wait at Kestrel Commons between 12:15 and 1:00? | yes | 0.2129 | `dining_kestrel_commons_followup.txt#0` |
+| How late in the semester can you declare a course pass/fail? | yes | 0.2072 | `admin_pass_fail_option.txt#0` |
+| How much does it cost to wash a load of laundry in Aldridge Hall? | yes | 0.1984 | `housing_aldridge_hall_laundry.txt#0` |
+| Do the CS 210 exams reuse the lab problems? | yes | 0.3599 | `course_cs_210_exams.txt#0` |
+| What is the capital of Mongolia? | no | 0.8246 | `course_hist_118_exams.txt#0` |
+| How do I change the oil in a diesel engine? | no | 0.9340 | `admin_meal_plan_changes.txt#0` |
+| Who won the 1994 World Cup? | no | 0.8859 | `course_hist_118_exams.txt#0` |
+| What is the recommended dosage of ibuprofen for a headache? | no | 0.8442 | `money_textbooks.txt#0` |
+| How do I write a for loop in Rust? | no | 0.8960 | `course_hist_118_exams.txt#0` |
+
+**The two groups:** in-corpus 0.198 to 0.360, out-of-corpus 0.824 to 0.934. Anything between about 0.4 and 0.8 separates these ten. That's too easy, because those off-topic questions come from a different world. So I tried ten more questions to see where the edges really are:
+
+| Question | Covered? | Best distance | Best chunk |
+|---|---|---|---|
+| is the housing lottery random? | yes | 0.2541 | `admin_housing_lottery.txt#0` |
+| when do parking permits sell out? | yes | 0.3074 | `admin_parking_permits.txt#0` |
+| is there a campus bookstore discount for laptops? | partly (textbooks only) | 0.3862 | `money_textbooks.txt#0` |
+| is the health centre good for urgent stuff? | yes | 0.4116 | `health_center.txt#0` |
+| where should I sit in the library? | yes | 0.4775 | `study_library_hours.txt#0` |
+| which dorm has air conditioning problems? | yes (Innisfree) | 0.5341 | `housing_aldridge_hall.txt#0` (wrong hall) |
+| what time does the football stadium open? | no | 0.5655 | `dining_halden_hall_followup.txt#0` |
+| how much is tuition per year? | no | 0.5727 | `admin_printing_quota.txt#0` |
+| does the campus gym have a swimming pool? | no | 0.6518 | `housing_tamsin_court.txt#0` |
+| who is the university president? | no | 0.7802 | `admin_wifi_and_accounts.txt#0` |
+
+Campus-sounding questions the posts don't answer land at 0.57 to 0.78. Vaguer questions the posts *do* answer go up to 0.53. **0.55 sits between 0.534 and 0.566.** At the starter's 0.6, the tuition and stadium questions would get through the gate, and only the prompt would stand between them and a made-up answer.
+
+**What 0.55 gets wrong:** there's only about 0.015 of margin on each side. A slightly vaguer phrasing of a real question will be refused, and a slightly closer uncovered question will get through. The laptop question (0.386) passes easily even though the posts only cover textbooks. The gate can't catch that kind of near miss, so the grounding instruction has to.
+
+**Grounding instruction:** I tightened `GROUNDING_INSTRUCTION` in `generate.py`. The refusal wording is now exact. There's a new rule for look-alike posts: use only the document about the hall, course or place the question names, and never carry a fact over from a similar one. Seven halls share the same "Laundry costs $X wash, $Y dry" sentence, so that's the likeliest way to get an answer that is wrong but still cites a real file.
 
 ## How I Used AI
 
-<!-- Two specific moments. For each: what you asked for, what came back, and
-     what you changed about it.
+I used Claude Code (in a cloud session) throughout this unit.
 
-     "I asked Claude to write the chunking function from my notes. It ignored
-     the overlap, so I added that myself" is the level of detail we're after.
-     "I used AI to help me code" is not.
+**1. The chunker's minimum size.** I asked Claude to write a chunker that fits `campus_life`. Its first version split posts on blank lines, repeated the title on every chunk, and folded anything under 120 characters into its neighbour. Reading the printed chunks, one was just "Re: The Atrium / Also worth saying: picked clean by 1:15 and not restocked again until the next morning". You can't tell *what* gets picked clean. Every `*_followup.txt` dining post ends with a tail like that, so the minimum went up to 150. That merged those tails back in (99 chunks became 92) and kept the splits I wanted (health centre, shuttle, long housing posts).
 
-     Milestone 5. -->
-
-**1.**
-
-**2.**
-
-<!-- ── Stretch features ─────────────────────────────────────────────────────
-     Doing one? Say so here BEFORE you start. A feature this README never
-     claims earns nothing.
-     ───────────────────────────────────────────────────────────────────────── -->
+**2. Wrong numbers, and a wrong chunk.** Claude's first Milestone 4 distances were all around 0.85 to 0.97, with nonsense matches (laundry posts for "capital of Mongolia"). The cause was that running `tools/smoke_test.py` had re-indexed the corpus with its fake embedder, and re-running `python app.py index` fixed it. Separately, when I edited the README on GitHub myself, I pasted a chunk from the wrong corpus (`thread_bike_commute.txt` from `advice_threads`, made by `fallback_split`). That's not what my system produces, so I replaced it with the five chunks `python app.py chunks --indices 6,54,59,69,70` prints for `campus_life`.
 
 ---
 
