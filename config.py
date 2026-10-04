@@ -30,6 +30,9 @@ CORPUS = os.getenv("AI201_CORPUS", "campus_life")
 CHUNK_SIZE = 800        # characters per chunk
 CHUNK_OVERLAP = 120     # characters shared between neighbouring chunks
 
+MAX_CHUNK_CHARS = 300   # body characters per chunk, not counting the title
+MIN_CHUNK_CHARS = 150   # a body shorter than this is merged into its neighbour
+
 
 # ─── Retrieval (Milestone 4) ─────────────────────────────────────────────────
 

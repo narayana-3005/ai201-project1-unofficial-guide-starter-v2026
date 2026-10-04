@@ -22,6 +22,7 @@ to it, write down what you saw, and move on. That's a real observation about
 your pipeline, not giving up.
 """
 
+import re
 from dataclasses import dataclass
 
 import config
@@ -80,24 +81,96 @@ def fallback_split(
     return chunks
 
 
+def _split_long_paragraph(paragraph: str, limit: int) -> list[str]:
+    """Break one paragraph that is longer than `limit` on sentence ends."""
+    sentences = re.split(r"(?<=[.!?])\s+", paragraph)
+    pieces: list[str] = []
+    current = ""
+    for sentence in sentences:
+        if current and len(current) + 1 + len(sentence) > limit:
+            pieces.append(current)
+            current = sentence
+        else:
+            current = f"{current} {sentence}".strip()
+    if current:
+        pieces.append(current)
+    return pieces
+
+
+def _join(group: list[tuple[str, int]]) -> str:
+    """Glue pieces back together: a space inside a paragraph, a blank line between."""
+    text = group[0][0]
+    for (piece, number), (_, previous) in zip(group[1:], group):
+        text += (" " if number == previous else "\n\n") + piece
+    return text
+
+
+def _length(group: list[tuple[str, int]]) -> int:
+    return len(_join(group))
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Split each post on its paragraph breaks, keeping the title on every chunk.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
+    Every campus_life document is a short title line, a blank line, then one
+    to three short paragraphs. The title is the only place the building or
+    course is named, so a paragraph cut loose from it can't answer anything
+    on its own.
 
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
-
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+      1. The first paragraph is the title if it's short and has no full stop.
+      2. The remaining paragraphs are packed together, in order, until adding
+         the next would pass MAX_CHUNK_CHARS. A paragraph is never cut unless
+         it alone is over the limit; then it is cut on sentence ends.
+      3. A body shorter than MIN_CHUNK_CHARS is folded into its neighbour.
+      4. The title is put back on top of every chunk instead of a character
+         overlap.
     """
-    return fallback_split(documents)
+    limit = config.MAX_CHUNK_CHARS
+    minimum = config.MIN_CHUNK_CHARS
+
+    chunks: list[Chunk] = []
+    for doc in documents:
+        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", doc.text) if p.strip()]
+
+        title = ""
+        if len(paragraphs) > 1 and len(paragraphs[0]) <= 80 and "." not in paragraphs[0]:
+            title = paragraphs.pop(0)
+
+        pieces: list[tuple[str, int]] = []
+        for number, paragraph in enumerate(paragraphs):
+            pieces.extend((piece, number) for piece in _split_long_paragraph(paragraph, limit))
+
+        groups: list[list[tuple[str, int]]] = []
+        for piece in pieces:
+            if groups and _length(groups[-1]) + 2 + len(piece[0]) <= limit:
+                groups[-1].append(piece)
+            else:
+                groups.append([piece])
+
+        merged: list[list[tuple[str, int]]] = []
+        for group in groups:
+            if merged and _length(group) < minimum:
+                merged[-1].extend(group)
+            else:
+                merged.append(group)
+        if len(merged) > 1 and _length(merged[0]) < minimum:
+            first = merged.pop(0)
+            merged[0] = first + merged[0]
+
+        for index, group in enumerate(merged):
+            body = _join(group)
+            text = f"{title}\n\n{body}" if title else body
+            chunks.append(
+                Chunk(
+                    text=text,
+                    source=doc.source,
+                    index=index,
+                    produced_by="chunker.py::split_documents",
+                )
+            )
+
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
