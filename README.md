@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+**Narayana — corpus: `campus_life`** (88 short student posts about dining, housing, courses, transit and campus admin rules).
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -29,72 +29,60 @@
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** up to 300 characters of body text per chunk (`MAX_CHUNK_CHARS`), plus the post's title line. Bodies under 150 characters (`MIN_CHUNK_CHARS`) are folded into the chunk before them. In practice the chunks run 177 to 461 characters including the title, 304 on average, 92 chunks from 88 posts.
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+**Overlap:** no character overlap. Instead, **the post's title line is repeated at the top of every chunk** it produces.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+**Function:** `chunker.py::split_documents`. The starter's `fallback_split` is still there, unchanged.
 
-     Milestone 3. -->
+**What I saw in the documents:** every `campus_life` post has the same shape: a short title line ("Aldridge Hall — what it's actually like", "CS 210 Data Structures — assessment"), a blank line, and then one to three short paragraphs. Posts are 178 to 549 characters. Two things followed from that:
+
+- **The starter's 800-character window never cut anything** (88 documents became 88 chunks). That isn't wrong for most posts, because a lot of them really are one thought. But the longer posts cover two different things, e.g. `health_center.txt` has walk-in hours *and* counselling, and `housing_innisfree_hall.txt` has the building/rooms *and* laundry/noise.
+- **The only place a building or course is named is the title line.** Split a housing post on its paragraphs and you get "The bad: no air conditioning..." with no way of telling which hall. Repeating the title fixes that; character overlap wouldn't.
+
+**Why 300:** I tried 250, 300, 400 and 500. At 500 only one post split; at 400 only two. At 300 the posts that split were the ones with two different topics (health centre, shuttle, the long housing posts). At 250 it started cutting single-thought posts like `admin_housing_lottery.txt` mid-explanation.
+
+**Where I changed my mind:** I started with a minimum of 120 characters. One chunk came out as just "Re: The Atrium / Also worth saying: picked clean by 1:15 and not restocked again until the next morning." Picked clean... *what?* The `*_followup.txt` dining posts all end with a short paragraph like that. I raised the minimum to 150, which folds those tails back into their post (99 chunks became 92).
 
 ## Sample Chunks
 
-<!-- Five chunks, pasted as text. Label each one and name the file it came from
-     AND the function that produced it — the grader checks your code against
-     what you claim here.
+Printed with `python app.py chunks --indices 6,54,59,69,70`, picked so that split posts appear and not only whole ones.
 
-     `python app.py chunks -n 5` prints all three for you. Copy them straight
-     across.
+**Chunk 1** (one long paragraph kept whole): source: `admin_housing_lottery.txt#0`, produced by: `chunker.py::split_documents`
 
-     Milestone 3. -->
+    On the housing lottery
 
-**Chunk 1** — source: `` — produced by: ``
-'''
-======================================================================
-Chunk 1  |  source: thread_bike_commute.txt#0  |  produced by: chunker.py::fallback_split
-======================================================================
-THREAD: Is a bike worth it for a 20 minute walk commute?
+    The housing lottery is not random in the way most people assume. Rising sophomores get a number drawn at random, but juniors and seniors are ordered by accumulated credit hours first, and only tie-break randomly. That means a senior who took summer courses reliably beats a senior who didn't. Numbers come out the second week of March and selection runs over four evenings.
 
---- reply 1 (14 votes) ---
-Yeah. Cuts an 18 minute walk to about 6. The thing nobody mentions is storage — covered bike parking exists at three buildings and is full by 9am at all three.
+**Chunk 2** (a whole post kept as one chunk): source: `dining_the_ridgeway_cafe.txt#0`, produced by: `chunker.py::split_documents`
 
---- reply 2 (9 votes) ---
-Counterpoint, I sold mine. Between November and March the paths are either icy or salted and salt destroys a drivetrain in one season.
+    The Ridgeway Café
 
---- reply 3 (22 votes) ---
-Both true. I keep a cheap bike for September to November and walk the rest of the year. Total cost was about $120 for the bike and I don't care what happens to it.
+    Second-year here. Wait times: 10 to 15 minutes at 12:30, none after 2:00. The thing worth going for is the only place on campus with real espresso. The thing to know is that seating is tight; about 40 seats for a building of 900.
 
---- reply 4 (5 votes) ---
-If you do get one, the campus does free registration and it's the only reason I got mine back after it was taken.
+    Hours are 7:00am to 4:00pm weekdays only. Costs declining balance only, no meal swipes.
 
-For each one, ask: could someone answer a question using only this,
-without reading what came before or after?
-'''
+**Chunk 3** (second half of a post that split on a topic change): source: `health_center.txt#1`, produced by: `chunker.py::split_documents`
 
-**Chunk 2** — source: `` — produced by: ``
+    The health centre
 
-```
-```
+    Counselling is separate, in the same building, and has its own intake process with a shorter wait than people expect — usually three or four days for a first session.
 
-**Chunk 3** — source: `` — produced by: ``
+**Chunk 4** (first half of a split housing post): source: `housing_innisfree_hall.txt#0`, produced by: `chunker.py::split_documents`
 
-```
-```
+    Innisfree Hall — what it's actually like
 
-**Chunk 4** — source: `` — produced by: ``
+    Transferred in last year, so take this with a grain of salt. Built 1991, renovated 2022. Rooms are doubles arranged as pairs sharing one bathroom between two rooms.
 
-```
-```
+    The good: the shared-bathroom-between-two-rooms arrangement is the best compromise on campus.
 
-**Chunk 5** — source: `` — produced by: ``
+**Chunk 5** (second half of the same post): source: `housing_innisfree_hall.txt#1`, produced by: `chunker.py::split_documents`
 
-```
-```
+    Innisfree Hall — what it's actually like
+
+    The bad: no air conditioning, which matters for the first three weeks of September.
+
+    Laundry costs $1.75 wash, $1.75 dry, app-based. On noise: moderate; the building is L-shaped and the short wing is much quieter.
 
 ## Sample Answer
 
