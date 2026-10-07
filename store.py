@@ -185,10 +185,13 @@ def search(
     variant: str = "default",
 ) -> list[Result]:
     """
-    Retrieve the chunks closest in meaning to a question.
-
-    Returns them nearest-first, each with its distance.
+    Hybrid retrieval: semantic ranking and BM25 keyword ranking, merged with
+    reciprocal rank fusion. Each Result keeps its semantic (cosine) distance,
+    so the relevance gate still works on meaning alone.
     """
+    import re
+    from rank_bm25 import BM25Okapi
+
     top_k = top_k or config.TOP_K
     name = config.collection_name(corpus, variant)
 
@@ -199,21 +202,36 @@ def search(
             f"No index called '{name}'. Run `python app.py index` first."
         ) from exc
 
-    raw = collection.query(
-        query_embeddings=embed([question]),
-        n_results=min(top_k, collection.count()),
-    )
+    n = collection.count()
+    raw = collection.query(query_embeddings=embed([question]), n_results=n)
+    docs = raw["documents"][0]
+    metas = raw["metadatas"][0]
+    dists = raw["distances"][0]
+
+    def tokens(s: str) -> list[str]:
+        return re.findall(r"[a-z0-9]+", s.lower())
+
+    bm25 = BM25Okapi([tokens(d) for d in docs])
+    scores = bm25.get_scores(tokens(question))
+    bm25_order = sorted(range(n), key=lambda i: -scores[i])
+
+    RRF_K = 60
+    fused = {i: 1.0 / (RRF_K + i + 1) for i in range(n)}
+    for rank, i in enumerate(bm25_order):
+        if scores[i] > 0:
+            fused[i] += 1.0 / (RRF_K + rank + 1)
+
+    order = sorted(range(n), key=lambda i: -fused[i])[:top_k]
 
     results: list[Result] = []
-    for text, meta, distance in zip(
-        raw["documents"][0], raw["metadatas"][0], raw["distances"][0]
-    ):
+    for i in order:
+        meta = metas[i]
         results.append(
             Result(
-                text=text,
+                text=docs[i],
                 source=str(meta.get("source", "unknown")),
                 label=f"{meta.get('source', 'unknown')}#{meta.get('index', 0)}",
-                distance=float(distance),
+                distance=float(dists[i]),
                 produced_by=str(meta.get("produced_by", "unknown")),
             )
         )

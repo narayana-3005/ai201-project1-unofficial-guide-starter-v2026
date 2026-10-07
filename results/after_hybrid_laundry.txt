@@ -1,0 +1,17 @@
+
+Question: How much does it cost to wash a load of laundry in Aldridge Hall?
+
+#   distance   source                           preview
+----------------------------------------------------------------------------------------------------
+1   0.1984     housing_aldridge_hall_laundry.txt Laundry in Aldridge Hall  Machines take $1.75 wash, ...
+2   0.3640     housing_innisfree_hall.txt       Innisfree Hall — what it's actually like  The bad: n...
+3   0.3356     housing_innisfree_hall_laundry.txt Laundry in Innisfree Hall  Machines take $1.75 wash,...
+4   0.4064     housing_aldridge_hall.txt        Aldridge Hall — what it's actually like  I lived her...
+5   0.3686     housing_old_brewhouse.txt        Old Brewhouse — what it's actually like  The bad: th...
+
+Gate: best distance 0.198 is under the 0.55 cutoff
+
+Lower is better. 0.3 is a close match, 0.9 is unrelated.
+Milestone 4: run your five questions, then the five in OUT_OF_SCOPE
+that your documents clearly don't cover, and look for the gap
+between the two groups. Your cutoff goes in that gap.
