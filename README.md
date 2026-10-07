@@ -158,111 +158,102 @@ I used Claude Code (in a cloud session) throughout this unit.
 
 ## Run Log — Before
 
-<!-- Your five criteria, three runs each. `python run_eval.py --label before`
-     runs the questions, puts the OUT_OF_SCOPE ones through the gate, and
-     writes it all into results/ for you. Targets come from criteria.md; the
-     verdict column is your call.
-
-     Criterion 3 is measured in one deterministic pass rather than three, so
-     the same number goes in all three run columns. That's correct, not lazy.
-
-     Milestone 1. -->
+File: `results/run_2026-10-06_1926_before.md`, produced by `run_eval.py::main` (gate part by `run_eval.py::check_out_of_scope`). There is no `scorer.py`, so criteria 1, 2 and 5 were scored with `tools/score_runs.py` (run as `PYTHONPATH=. python tools/score_runs.py <results file>`). Criterion 1 is scored at file level: a question passes if a retrieved file contains its `expects` phrase. Most posts are a single chunk, so this is close to chunk level. Criteria 3 and 4 are deterministic, so one number goes in all three columns.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Chunks stand on their own | all 5 | 5/5 | 5/5 | 5/5 | MET |
+| 5. Cited source contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 
-<!-- Underneath, paste the REAL output for each criterion from one of your
-     runs — the actual text your system produced, not a description of it.
-     Name the file and function that produced it. -->
+Real output (criterion 1, `store.py::search`, laundry question, run 1):
+
+    Sources retrieved: housing_aldridge_hall_laundry.txt, housing_innisfree_hall.txt, housing_innisfree_hall_laundry.txt, housing_old_brewhouse.txt, housing_old_brewhouse_laundry.txt
+
+Real output (criterion 2, `generate.py::answer_from_chunks`, laundry question, run 1):
+
+    It costs $1.75 to wash a load of laundry in Aldridge Hall (source: housing_aldridge_hall_laundry.txt).
+
+Real output (criterion 3, `run_eval.py::check_out_of_scope`, cutoff 0.55):
+
+    refused  (best distance 0.825)  What is the capital of Mongolia?
+    refused  (best distance 0.934)  How do I change the oil in a diesel engine?
+    refused  (best distance 0.886)  Who won the 1994 World Cup?
+    refused  (best distance 0.844)  What is the recommended dosage of ibuprofen for a headache?
+    refused  (best distance 0.896)  How do I write a for loop in Rust?
+    -> gate refused 5 of 5
+
+Real output (criterion 4, `chunker.py::split_documents`, from `python app.py chunks -n 92`): shortest chunk 179 characters, longest 465, none outside 100 to 600. Sample chunk 1:
+
+    On the add/drop deadline
+
+    You can add a course through the end of the second week. Dropping is a longer window — through the end of week six — but a drop after week two shows as a W on your transcript. Nothing anywhere on the registrar's site says this plainly, and students find out from each other.
+
+Real output (criterion 5, CS 210 question, run 1) and the line in `course_cs_210_exams.txt` that backs it:
+
+    Yes, the exams reuse the lab problems (source: course_cs_210.txt, course_cs_210_exams.txt).
+    Do the labs even though they're only 10% — the exams reuse the lab problems.
 
 ## Verdicts
 
-<!-- MET or MISSED for each of the five, against the target you wrote last
-     unit — not a new one. Plus a sentence on how you decided. That sentence
-     matters most where it was close.
-
-     If your target said 4 of 5 and your runs came out 4, 3, 4, that's a MISS.
-     The target has to hold, not show up occasionally.
-
-     Milestone 2. -->
-
 | # | Criterion | Verdict | How I decided |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| 1 | Retrieved chunk contains the answer | MET | 5/5 in all three runs against a target of 4 of 5. Retrieval is deterministic, so the runs could not differ. |
+| 2 | Every answer names a source | MET | All 15 answers ended with a `(source: ...)` line. Target was 5 of 5. |
+| 3 | Gate stops out-of-corpus questions | MET | Refused 5 of 5, best distances 0.825 to 0.934 against a 0.55 cutoff. |
+| 4 | Chunks stand on their own | MET | All 92 chunks are 179 to 465 characters. The 5 printed samples all start with the post title. I judged "ends on a complete sentence" by eye on those 5 only. |
+| 5 | Cited source contains the answer | MET | In all 15 answers the phrase is in the answer and in at least one cited file. For CS 210, runs 2 and 3 cited only `course_cs_210.txt`, which also contains "lab problems", so they pass. |
+
+Every criterion was met on the first try, so my targets were probably set safe. Criteria 1, 3 and 5 scored 5/5 every time and should have been 5 of 5.
 
 ## Diagnoses
 
-<!-- For each miss: which stage caused it, and how. The stage alone isn't
-     enough — you need the mechanism.
-
-     Not a diagnosis: "Question 3 didn't work."
-     A diagnosis:     "Question 3 asks about laundry costs. The answer is in
-                       one sentence that got split across two chunks, so
-                       neither chunk on its own contains it."
-
-     The five stages: loading → chunking → embedding → retrieval → generation.
-
-     Look for a pattern. If three misses all ask about numbers, that's one
-     problem, not three.
-
-     Missed nothing? Say so, then say honestly whether your targets were set
-     low, and which one you'd tighten and to what.
-
-     Milestone 3. -->
+I missed no criterion, so there is no failure to diagnose. The one pattern I saw was in retrieval, not in the criteria: on every question 3 to 4 of the top 5 chunks were off-target (the wrong hall, the wrong course, or an unrelated post), 18 of 25 slots in total. This is a retrieval-stage problem, because the semantic search blurs building names and course codes. It never reached the answers, because the grounding prompt kept the model on the right post.
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** I added BM25 keyword search to `store.py::search` and merged it with the semantic ranking by reciprocal rank fusion (k = 60). Each result keeps its semantic distance, so the gate in `gate.py` still reads meaning alone. `store.py` is the only file that changed (`git diff --stat 6c1ff54 HEAD` on `store.py config.py gate.py generate.py chunker.py` lists only `store.py`).
 
-**Why I picked it:**
+**Why I picked it:** my weak spots were wrong-building and wrong-course posts crowding the top 5 (for example Innisfree and Old Brewhouse for an Aldridge question). Building names and course codes are exact terms that semantic search glides past.
 
-<!-- Connect it to a specific diagnosis above in one sentence. If you can't,
-     you picked a fix because it sounded impressive. -->
+**A mistake I made and kept in the history:** my first "after" run (commit `80efc14`, `results/run_2026-10-06_1941_after.md`) was made before `store.py` had actually been changed. Its distances match the before run exactly, which shows retrieval is deterministic, but it is not a measurement of the improvement. The real after run is `results/run_2026-10-06_1943_after_hybrid.md`, from commit `0f2f0d1`.
 
 ### Run Log — After
 
-<!-- Same format, same five criteria, three runs each.
-     `python run_eval.py --label after` -->
+File: `results/run_2026-10-06_1943_after_hybrid.md`, scored the same way as the before log.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. Chunks stand on their own | all 5 | 5/5 | 5/5 | 5/5 | MET |
+| 5. Cited source contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 
-**Did it help?**
+Top-5 retrieval, before to after (relevant posts / off-target posts):
 
-<!-- Say plainly whether it did, and how you know. If it made things worse,
-     say that — a change that backfired, honestly reported, earns full credit
-     and is more interesting than one that worked. What matters is that you can
-     tell.
+| Question | Before | After |
+|---|---|---|
+| Housing lottery | 1 / 4 | 1 / 4 |
+| Kestrel wait | 2 / 3 | 2 / 3 |
+| Pass/fail | 1 / 4 | 1 / 4 (the CS 340 post that shares "week eight" dropped out) |
+| Aldridge laundry | 1 / 4 | 2 / 3 (`housing_aldridge_hall.txt` entered, Old Brewhouse laundry with the wrong price left) |
+| CS 210 exams | 2 / 3 | 2 / 3 (BIOL 160 swapped for PHYS 130) |
 
-     Milestone 4. -->
+Off-target slots went from 18 of 25 to 17 of 25. The gate still refused 5 of 5. The out-of-scope best distances moved slightly (Mongolia 0.825 to 0.869, ibuprofen 0.844 to 0.860, Rust 0.896 to 0.900) because fusion changes which chunks reach the top 5. That is harmless here, with a large margin to the 0.55 cutoff.
+
+**Did it help?** Barely. The pass counts did not change, because they were already at the ceiling. The one real gain is on the Aldridge laundry question: one more on-topic post and one fewer off-target post in the top 5. The other four questions are unchanged in quality. The after laundry answers cite `housing_aldridge_hall.txt`, which contains "$1.75", so criterion 5 still passes.
 
 ## What's Still Broken
 
-<!-- For each criterion still missed after your fix: what you'd do about it,
-     and why you stopped where you did.
-
-     "I ran out of time" is fine if it's true. Pretending nothing is left is
-     not.
-
-     Milestone 5. -->
+Every question still pulls 3 to 4 off-target chunks into the top 5, and hybrid search removed only one of them. I would next try a smaller top-k (3) or a rule that drops chunks far behind the best one. I stopped because all five criteria were met, so this noise never showed up in the pass counts and I had no failing test to aim at. The relevance gate also has only about 0.015 of margin on each side in my Unit 1 edge-case questions (0.534 vs 0.566), which this unit did not test.
 
 ## What I'd Do Differently
 
-<!-- Knowing what you know now — which of your five criteria would you write
-     differently, and why?
+I would write criteria 1, 3 and 5 as 5 of 5, since they scored 5/5 in every run. I would rewrite criterion 1 to count how many of the top 5 chunks are on-topic, because "a retrieved chunk contains the answer" could not show the difference hybrid search made. I would check criterion 4's "ends on a complete sentence" in code on all 92 chunks, not by eye on 5. I would also build `scorer.py` before running the test, so I do not score by hand.
 
-     Milestone 5. -->
+## How I Used AI (Unit 2)
+
+I used Claude in chat to plan the unit, write `tools/score_runs.py`, and write the hybrid BM25 + reciprocal-rank-fusion version of `store.py::search`. It also caught that my first "after" run and its commit were made before `store.py` had changed (the distances were identical to the before run, and the commit listed no code file), so I re-applied the change and re-ran. The verdicts, diagnoses and the call on whether the change helped come from my own runs.
