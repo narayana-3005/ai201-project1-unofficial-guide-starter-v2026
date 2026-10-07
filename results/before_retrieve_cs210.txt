@@ -1,0 +1,17 @@
+
+Question: Do the CS 210 exams reuse the lab problems?
+
+#   distance   source                           preview
+----------------------------------------------------------------------------------------------------
+1   0.3599     course_cs_210_exams.txt          CS 210 Data Structures — assessment  Two midterms an...
+2   0.4253     course_cs_210.txt                CS 210 Data Structures  I'm a junior and I've done t...
+3   0.5963     course_biol_160.txt              BIOL 160 Cell Biology  I lived here my sophomore yea...
+4   0.6053     course_cs_340_exams.txt          CS 340 Databases — assessment  One midterm and a fin...
+5   0.6288     course_engl_205_exams.txt        ENGL 205 Writing for the Sciences — assessment  No e...
+
+Gate: best distance 0.360 is under the 0.55 cutoff
+
+Lower is better. 0.3 is a close match, 0.9 is unrelated.
+Milestone 4: run your five questions, then the five in OUT_OF_SCOPE
+that your documents clearly don't cover, and look for the gap
+between the two groups. Your cutoff goes in that gap.
